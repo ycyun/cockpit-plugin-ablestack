@@ -8,8 +8,6 @@
 #최초작성일 : 2021-04-05
 #########################################
 set -x
-LOG_DIR="/var/logs/ablecloud"
-BOOTSTRAP_LOG=/var/log/ablecloud/
 #scvm의 PN-ip를 갖는 host목록 생성
 conffile=/root/ceph.conf
 imagename="localhost:5000/ceph/daemon:latest"
@@ -61,8 +59,7 @@ cephadm --image "$image" bootstrap \
         ceph config set mgr mgr/cephadm/container_image_alertmanager localhost:5000/prom/alertmanager:ablestack && \
         ceph config set mgr mgr/cephadm/container_image_grafana localhost:5000/ceph/ceph-grafana:ablestack && \
         ceph config set mgr mgr/cephadm/container_image_node_exporter localhost:5000/prom/node-exporter:ablestack && \
-        ceph config set mgr mgr/cephadm/container_image_prometheus localhost:5000/prom/prometheus:ablestack && \
-        ceph config set mgr mgr/cephadm/host_check_interval 60
+        ceph config set mgr mgr/cephadm/container_image_prometheus localhost:5000/prom/prometheus:ablestack
 
 #crontab<<EOF
 #* * * * * /usr/local/bin/ipcorrector
