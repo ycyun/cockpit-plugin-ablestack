@@ -74,6 +74,7 @@ def argumentParser():
     tmp_parser.add_argument('--sn-ip', metavar='Service IP', help="서비스 네트워크 IP               (ccvm만)")
     tmp_parser.add_argument('--sn-prefix', metavar='Service prefix', help="서비스 네트워크 prefix   (ccvm만)")
     tmp_parser.add_argument('--sn-gw', metavar='Service gw', help="서비스 네트워크 gw               (ccvm만)")
+    tmp_parser.add_argument('--sn-dns', metavar='Service dns', help="서비스 네트워크 dns               (ccvm만)")
     tmp_parser.add_argument('--pn-nic', metavar='Storage NIC',  help="스토리지 네트워크 NIC         (scvm만)")
     tmp_parser.add_argument('--pn-ip', metavar='Storage IP',    help="스토리지 네트워크 IP          (scvm만)")
     tmp_parser.add_argument('--pn-prefix', metavar='Service prefix', help="스토리지 네트워크 prefix (scvm만)", default=24)
