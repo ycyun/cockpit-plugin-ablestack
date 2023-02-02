@@ -9,10 +9,7 @@
 #########################################
 set -x
 LOGFILE="/var/log/cloud_install.log"
-
-hosts=$(grep -v mngt /etc/hosts | grep -v scvm | grep -v pn | grep -v localhost | awk {'print $1'})
-
-systemctl enable --now mysqld
+DATABASE_SERVER_IP="DBSERVERIP"
 DATABASE_PASSWD="Ablecloud1!"
 ################# firewall setting
 firewall-cmd --permanent --zone=public --add-port=8080/tcp 2>&1 | tee -a $LOGFILE
@@ -59,73 +56,13 @@ systemctl enable --now nfs-server.service
 mkdir /nfs/primary
 mkdir /nfs/secondary
 
-# Crushmap 설정 추가 (ceph autoscale)
-scvm=$(grep scvm-mngt /etc/hosts | awk {'print $1'})
-ssh -o StrictHostKeyChecking=no $scvm /usr/local/sbin/setCrushmap.sh
-
 ################# Setting Database
-mysqladmin -uroot password $DATABASE_PASSWD
+cloudstack-setup-databases cloud:$DATABASE_PASSWD@$DATABASE_SERVER_IP
 setenforce 0
-systemctl enable --now cloudstack-usage
-sed -i 's/SELINUX=enforcing/SELINUX=permissive/g' /etc/selinux/config
-cloudstack-setup-databases cloud:$DATABASE_PASSWD --deploy-as=root:$DATABASE_PASSWD  2>&1 | tee -a $LOGFILE
-
-# Cloudstack Global Setting
-global_settings=("user.password.encoders.order=SHA256SALT,MD5,LDAP,PLAINTEXT" \
-"user.password.encoders.exclude=" "usage.execution.timezone=Asia/Seoul" \
-"network.loadbalancer.haproxy.stats.visibility=all" \
-"storage.overprovisioning.factor=1" "enable.dynamic.scale.vm=true" \
-"kvm.ha.activity.check.interval=60" "kvm.ha.activity.check.max.attempts=10" \
-"kvm.ha.activity.check.timeout=60" "kvm.snapshot.enabled=true" )
-for i in "${global_settings[@]}"
-do
-  key=$(echo $i | cut -d "=" -f 1)
-  value=$(echo $i | cut -d "=" -f 2)
-  mysql --user=root --password=$DATABASE_PASSWD -e "use cloud; UPDATE configuration SET value='$value' where name='$key';"  2>&1 | tee -a $LOGFILE
-done
 
 cloudstack-setup-management  2>&1 | tee -a $LOGFILE
 
 systemctl enable --now cloudstack-management
 
-#UEFI 설정 파일 생성
-echo -e "guest.nvram.template.secure=/usr/share/edk2/ovmf/OVMF_VARS.secboot.fd
-guest.nvram.template.legacy=/usr/share/edk2/ovmf/OVMF_VARS.fd
-guest.loader.secure=/usr/share/edk2/ovmf/OVMF_CODE.secboot.fd
-guest.loader.legacy=/usr/share/edk2/ovmf/OVMF_CODE.secboot.fd
-guest.nvram.path=/var/lib/libvirt/qemu/nvram/" > /root/uefi.properties
-
-for host in $hosts
-do
-  scp -o StrictHostKeyChecking=no /root/uefi.properties $host:/etc/cloudstack/agent/
-done
-
-rm -rf /root/uefi.properties
-
-
-#tpm 설정 파일 생성
-echo -e "host.tpm.enable=true" > /root/tpm.properties
-
-for host in $hosts
-do
-  scp -o StrictHostKeyChecking=no /root/tpm.properties $host:/etc/cloudstack/agent/
-done
-
-rm -rf /root/tpm.properties
-
-#systemvm template 등록
-/usr/share/cloudstack-common/scripts/storage/secondary/cloud-install-sys-tmplt \
--m /nfs/secondary \
--f /usr/share/ablestack/systemvmtemplate-* \
--h kvm -F
-
-for host in $hosts
-do
-  ssh -o StrictHostKeyChecking=no $host /usr/bin/systemctl enable --now pacemaker
-  ssh -o StrictHostKeyChecking=no $host /usr/bin/systemctl enable --now corosync
-done
-
-# Delete container image file
-rm -rf /usr/share/ablestack/*.tar
 # Delete bootstrap script file
 rm -rf /root/bootstrap.sh
